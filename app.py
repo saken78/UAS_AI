@@ -4,30 +4,26 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="SPK Diabetes — AHP+TOPSIS", page_icon="🩺", layout="wide")
+st.set_page_config(
+    page_title="SPK Diabetes — AHP+TOPSIS", page_icon="🩺", layout="wide"
+)
 
-# ── Load Model ──────────────────────────────────────────────
+
+# ── Load Model dari Joblib (Bobot AHP dari notebook) ────────
 @st.cache_resource
 def load_model():
     return joblib.load("model_spk_diabetes.joblib")
 
+
 model = load_model()
-weights = model["weights"]
-criteria = model["criteria"]
+base_weights = model["weights"]
 criteria_type = model["criteria_type"]
 cr = model["consistency_ratio"]
 
+# ── Knowledge Base ──────────────────────────────────────────
 criteria_short = ["Efektivitas", "Biaya", "Kemudahan", "Efek Samping", "Kecepatan"]
 criteria_unit = ["%", "Rp rb/bln", "1-10", "1-10", "bln"]
-criteria_desc = [
-    "Persentase keberhasilan penatalaksanaan",
-    "Estimasi biaya per bulan (ribu rupiah)",
-    "Skor kemudahan penerapan (1 = sulit, 10 = mudah)",
-    "Skor potensi efek samping (1 = ringan, 10 = berat)",
-    "Estimasi waktu sampai hasil terlihat (bulan)",
-]
 
-# ── 5 Alternatif Referensi (nilai dari notebook) ────────────
 alt_names = [
     "A1: Diet Rendah Karb + Olahraga",
     "A2: Konsultasi Dokter + HbA1c",
@@ -35,14 +31,24 @@ alt_names = [
     "A4: Program Penurunan Berat Badan",
     "A5: Intervensi Gaya Hidup Intensif",
 ]
-alt_short = ["Diet+Olahraga", "Konsultasi Dokter", "Metformin", "Penurunan BB", "Gaya Hidup Intensif"]
-ref_matrix = np.array([
-    [80, 150, 8, 2, 3],
-    [75, 200, 6, 1, 1],
-    [90, 350, 7, 5, 1],
-    [70, 100, 9, 1, 4],
-    [88, 500, 5, 2, 2],
-], dtype=float)
+alt_short = [
+    "Diet+Olahraga",
+    "Konsultasi Dokter",
+    "Metformin",
+    "Penurunan BB",
+    "Gaya Hidup Intensif",
+]
+
+ref_matrix = np.array(
+    [
+        [80, 150, 8, 2, 3],  # A1
+        [75, 200, 6, 1, 1],  # A2
+        [90, 350, 7, 5, 1],  # A3
+        [70, 100, 9, 1, 4],  # A4
+        [88, 500, 5, 2, 2],  # A5
+    ],
+    dtype=float,
+)
 
 
 # ── Fungsi TOPSIS ───────────────────────────────────────────
@@ -68,114 +74,157 @@ def topsis(decision_matrix, weights, criteria_type):
     return scores
 
 
-# ── Tampilan Jurnal / Referensi (hanya sekali, pakai session_state) ──
+# ── Session State ───────────────────────────────────────────
 if "show_jurnal" not in st.session_state:
     st.session_state.show_jurnal = False
 if "show_ref" not in st.session_state:
     st.session_state.show_ref = False
 
-# ── Sidebar ─────────────────────────────────────────────────
-st.sidebar.title("⚙️ Profil Pasien")
+# ── Sidebar: Input Data Klinis Pasien ───────────────────────
+st.sidebar.title("Input Data Klinis Pasien")
 st.sidebar.markdown(
-    "<small>Masukkan nilai untuk setiap kriteria sesuai kondisi pasien.</small>",
+    "<small>Masukkan kondisi pasien untuk personalisasi rekomendasi.</small>",
     unsafe_allow_html=True,
 )
 st.sidebar.markdown("---")
 
-user_values = []
-for i in range(5):
-    ctype = criteria_type[i]
-    label = f"{criteria_short[i]} ({criteria_unit[i]})"
-    help_text = f"{criteria_desc[i]}  |  Tipe: **{ctype.upper()}**"
-    if i == 0:  # Efektivitas %
-        val = st.sidebar.slider(label, 10, 100, 78, help=help_text)
-    elif i == 1:  # Biaya
-        val = st.sidebar.slider(label, 50, 600, 250, 10, help=help_text)
-    elif i == 2:  # Kemudahan
-        val = st.sidebar.slider(label, 1, 10, 7, help=help_text)
-    elif i == 3:  # Efek Samping
-        val = st.sidebar.slider(label, 1, 10, 3, help=help_text)
-    else:  # Kecepatan
-        val = st.sidebar.slider(label, 1, 12, 3, help=help_text)
-    user_values.append(float(val))
+usia = st.sidebar.number_input("Usia (tahun)", min_value=20, max_value=100, value=55)
+bb = st.sidebar.number_input(
+    "Berat Badan (kg)", min_value=30.0, max_value=200.0, value=70.0
+)
+tb = st.sidebar.number_input(
+    "Tinggi Badan (cm)", min_value=100.0, max_value=250.0, value=165.0
+)
+hba1c = st.sidebar.number_input(
+    "HbA1c Terakhir (%)", min_value=5.0, max_value=15.0, value=8.5, step=0.1
+)
+budget = st.sidebar.selectbox(
+    "Kisaran Budget per Bulan",
+    ["< Rp 100.000", "Rp 100.000 - 300.000", "> Rp 300.000"],
+)
 
+# Hitung BMI
+bmi = bb / ((tb / 100) ** 2)
+if bmi > 30:
+    status_bmi = "Obesitas"
+elif bmi > 25:
+    status_bmi = "Overweight"
+else:
+    status_bmi = "Normal"
+st.sidebar.info(f"**BMI:** {bmi:.1f} ({status_bmi})")
 st.sidebar.markdown("---")
 
-# Tombol referensi jurnal
-if st.sidebar.button("📚 Lihat Referensi Jurnal"):
+# Tombol referensi
+if st.sidebar.button("Lihat Referensi Jurnal"):
     st.session_state.show_jurnal = not st.session_state.show_jurnal
+
+# ── Dynamic Weighting (Aturan Klinis) ───────────────────────
+adjusted_weights = base_weights.copy()
+warnings = []
+
+# Aturan 1: HbA1c sangat tinggi → Efektivitas mutlak
+if hba1c > 9.0:
+    adjusted_weights[0] += 0.15  # C1 Efektivitas naik
+    adjusted_weights[4] -= 0.15  # C5 Kecepatan turun
+    warnings.append(
+        "⚠️ **HbA1c Tinggi (>9.0%)**: Efektivitas diprioritaskan — kecepatan bukan fokus."
+    )
+
+# Aturan 2: Budget terbatas → Biaya jadi prioritas
+if budget == "< Rp 100.000":
+    adjusted_weights[1] += 0.20  # C2 Biaya naik
+    adjusted_weights[4] -= 0.10  # C5 Kecepatan turun
+    warnings.append(
+        "⚠️ **Budget Terbatas (< Rp 100rb)**: Opsi terjangkau diprioritaskan."
+    )
+
+# Aturan 3: Obesitas → Program murah & mudah
+if bmi > 30:
+    adjusted_weights[1] += 0.10  # C2 Biaya naik
+    adjusted_weights[2] += 0.10  # C3 Kemudahan naik
+    adjusted_weights[4] -= 0.20  # C5 Kecepatan turun
+    warnings.append(
+        "⚠️ **Obesitas (BMI > 30)**: Program terjangkau & mudah diprioritaskan."
+    )
+
+# Aturan 4: Lansia → Minim efek samping
+if usia > 65:
+    adjusted_weights[3] += 0.15  # C4 Efek Samping naik
+    adjusted_weights[4] -= 0.15  # C5 Kecepatan turun
+    warnings.append("⚠️ **Lansia (Usia > 65)**: Minim efek samping diprioritaskan.")
+
+# Pastikan tidak ada bobot negatif, lalu normalisasi
+adjusted_weights = np.clip(adjusted_weights, 0, None)
+adjusted_weights = adjusted_weights / adjusted_weights.sum()
 
 # ── Main Content ────────────────────────────────────────────
 st.title("🩺 SPK Diabetes Melitus Tipe 2")
-st.markdown("**Sistem Pendukung Keputusan — Metode AHP + TOPSIS**")
-st.caption("Rekomendasi penatalaksanaan berdasarkan 5 kriteria klinis")
+st.markdown(
+    "Sistem Pendukung Keputusan — Metode **AHP + TOPSIS** dengan *Dynamic Weighting*"
+)
+st.caption(
+    "Rekomendasi penatalaksanaan dipersonalisasi berdasarkan profil klinis pasien."
+)
 
-# ── Tab 1: Hasil ────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📊 Hasil & Rekomendasi", "📋 Data Alternatif", "ℹ️ Metodologi"])
+# Tampilkan warning
+if warnings:
+    for w in warnings:
+        st.warning(w)
+
+# ── Tabs ────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(
+    ["Hasil & Rekomendasi", "Data Alternatif", "Metodologi & Bobot"]
+)
 
 with tab1:
     col1, col2 = st.columns([1, 1], gap="large")
 
-    # ── Jalankan TOPSIS ──
-    user_row = np.array([user_values], dtype=float)
-    full_matrix = np.vstack([ref_matrix, user_row])
-    scores = topsis(full_matrix, weights, criteria_type)
+    # ── Jalankan TOPSIS (5 alternatif) ──
+    scores = topsis(ref_matrix, adjusted_weights, criteria_type)
 
-    # Pisahkan skor referensi dan user
-    ref_scores = scores[:5]
-    user_score = scores[5]
-    all_scores = np.concatenate([ref_scores, [user_score]])
-    rankings = pd.Series(all_scores).rank(ascending=False).astype(int).values
-    user_rank = rankings[5]
-
-    # Dataframe hasil
+    # Ranking
     df_result = pd.DataFrame(
         {
-            "Alternatif": alt_names + ["🟢 **Profil Anda**"],
-            "Skor TOPSIS": np.round(all_scores, 5),
-            "Ranking": rankings,
+            "Alternatif": alt_names,
+            "Skor TOPSIS": np.round(scores, 5),
         }
-    ).sort_values("Ranking")
-    df_result_display = df_result.copy()
-    df_result_display["Ranking"] = df_result_display["Ranking"].apply(
-        lambda r: ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣"][r - 1] + f" Rank {r}"
+    )
+    df_result["Ranking"] = df_result["Skor TOPSIS"].rank(ascending=False).astype(int)
+    df_result = df_result.sort_values("Ranking").reset_index(drop=True)
+    df_result["Ranking"] = df_result["Ranking"].apply(
+        lambda r: ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][r - 1] + f" Rank {r}"
     )
 
     with col1:
-        st.subheader("🏆 Hasil Perankingan")
-        # Highlight user row
+        st.subheader("Hasil Perankingan")
         st.dataframe(
-            df_result_display.set_index("Alternatif"),
+            df_result.set_index("Alternatif"),
             use_container_width=True,
             column_config={
                 "Skor TOPSIS": st.column_config.NumberColumn(format="%.5f"),
             },
         )
 
-        # Rekomendasi terbaik
-        best_idx = np.argmax(ref_scores)
+        best_idx = np.argmax(scores)
         st.success(
-            f"**Rekomendasi terbaik untuk profil ini:**\n\n"
-            f"👉 {alt_names[best_idx]}"
+            f"**Rekomendasi terbaik untuk pasien ini:**\n\n👉 {alt_names[best_idx]}"
         )
-        if user_rank == 1:
-            st.balloons()
-            st.info("Nilai profil Anda paling optimal! 🎉")
+        st.balloons()
 
     with col2:
-        st.subheader("📈 Visualisasi Skor")
+        st.subheader("Visualisasi Skor")
         fig, ax = plt.subplots(figsize=(6, 3.5))
-        colors = [
-            "#2E74B5", "#4BACC6", "#A9D18E", "#FFD966", "#F4B183", "#E74C3C"
-        ]
-        all_labels = alt_short + ["Profil Anda"]
-        sorted_idx = np.argsort(all_scores)[::-1]
-        sorted_scores = all_scores[sorted_idx]
-        sorted_labels = [all_labels[i] for i in sorted_idx]
+        colors = ["#2E74B5", "#4BACC6", "#A9D18E", "#FFD966", "#F4B183"]
+
+        sorted_idx = np.argsort(scores)[::-1]
+        sorted_scores = scores[sorted_idx]
+        sorted_labels = [alt_short[i] for i in sorted_idx]
         sorted_colors = [colors[i] for i in sorted_idx]
 
-        bars = ax.barh(range(6), sorted_scores, color=sorted_colors, edgecolor="white", height=0.6)
-        ax.set_yticks(range(6))
+        bars = ax.barh(
+            range(5), sorted_scores, color=sorted_colors, edgecolor="white", height=0.6
+        )
+        ax.set_yticks(range(5))
         ax.set_yticklabels(sorted_labels)
         ax.invert_yaxis()
         ax.set_xlabel("Skor TOPSIS")
@@ -183,53 +232,32 @@ with tab1:
         ax.set_xlim(0, 1)
         ax.spines[["top", "right"]].set_visible(False)
         for bar, sc in zip(bars, sorted_scores):
-            ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height() / 2, f"{sc:.4f}", va="center", fontsize=9)
-        ax.set_title("Skor TOPSIS — 5 Alternatif + Profil Anda", fontweight="bold")
+            ax.text(
+                bar.get_width() + 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{sc:.4f}",
+                va="center",
+                fontsize=9,
+            )
+        ax.set_title("Skor TOPSIS — 5 Alternatif Penatalaksanaan", fontweight="bold")
         fig.tight_layout()
         st.pyplot(fig)
 
-    # ── Tabel perbandingan nilai ──
-    st.markdown("---")
-    st.subheader("📋 Perbandingan Nilai Kriteria")
-    comp_df = pd.DataFrame(
-        np.vstack([ref_matrix, user_row]),
-        index=alt_short + ["**Profil Anda**"],
-        columns=criteria_short,
-    )
-    for j, ct in enumerate(criteria_type):
-        comp_df[f"{criteria_short[j]}"] = comp_df[f"{criteria_short[j]}"].astype(int)
-    st.dataframe(comp_df, use_container_width=True)
-
-
 with tab2:
-    st.subheader("📋 5 Alternatif Penatalaksanaan Diabetes")
+    st.subheader("5 Alternatif Penatalaksanaan Diabetes (Data Referensi)")
     df_alt = pd.DataFrame(
         ref_matrix.astype(int),
         index=alt_short,
         columns=criteria_short,
     )
     st.dataframe(df_alt, use_container_width=True)
-
-    if st.button("📊 Lihat Data Tambahan", key="show_ref_btn"):
-        st.session_state.show_ref = not st.session_state.show_ref
-
-    if st.session_state.show_ref:
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("### Bobot Kriteria (AHP)")
-            st.markdown(f"**CR = {cr:.4f} (Konsisten ✅)**")
-            bw = pd.DataFrame({"Kriteria": criteria_short, "Bobot": weights.round(4)})
-            st.dataframe(bw.set_index("Kriteria"), use_container_width=True)
-        with col_b:
-            st.markdown("### Tipe Kriteria")
-            ct_df = pd.DataFrame(
-                {"Kriteria": criteria_short, "Tipe": [ct.upper() for ct in criteria_type]}
-            )
-            st.dataframe(ct_df.set_index("Kriteria"), use_container_width=True)
-
+    st.info(
+        "💡 *Data bersifat tetap dari sintesis literatur klinis (ADA 2023). "
+        "Yang berubah sesuai pasien adalah **bobot prioritas** kriteria.*"
+    )
 
 with tab3:
-    st.subheader("ℹ️ Metodologi AHP + TOPSIS")
+    st.subheader("Metodologi AHP + TOPSIS & Dynamic Weighting")
 
     st.markdown(
         """
@@ -242,42 +270,62 @@ with tab3:
     meranking alternatif berdasarkan jarak ke solusi ideal positif (A⁺)
     dan solusi ideal negatif (A⁻). Alternatif terbaik adalah yang terdekat
     ke A⁺ dan terjauh dari A⁻.
-
-    **5 Kriteria:**
-    | # | Kriteria | Tipe |
-    |---|----------|------|
-    | C1 | Efektivitas (%) | Benefit |
-    | C2 | Biaya (Rp rb/bln) | Cost |
-    | C3 | Kemudahan (1-10) | Benefit |
-    | C4 | Efek Samping (1-10) | Cost |
-    | C5 | Kecepatan (bln) | Cost |
-
-    **Bobot AHP (CR = {cr:.4f}):**
-    | C1 | C2 | C3 | C4 | C5 |
-    |----|----|----|----|----|
-    | {weights[0]:.4f} | {weights[1]:.4f} | {weights[2]:.4f} | {weights[3]:.4f} | {weights[4]:.4f} |
-    """.format(
-            cr=cr,
-            weights=weights,
-        )
+    """
     )
 
-    st.markdown("### 📚 Referensi")
+    st.markdown(f"""
+    **5 Kriteria Keputusan:**
+
+    | # | Kriteria | Tipe | Deskripsi |
+    |---|----------|------|-----------|
+    | C1 | Efektivitas (%) | Benefit | Persentase keberhasilan penatalaksanaan |
+    | C2 | Biaya (Rp rb/bln) | Cost | Estimasi biaya per bulan (ribu rupiah) |
+    | C3 | Kemudahan (1-10) | Benefit | Skor kemudahan penerapan |
+    | C4 | Efek Samping (1-10) | Cost | Skor potensi efek samping |
+    | C5 | Kecepatan (bln) | Cost | Estimasi waktu sampai hasil terlihat |
+
+    **Bobot AHP (CR = {cr:.4f} < 0.10 → Konsisten):**
+    | C1 | C2 | C3 | C4 | C5 |
+    |----|----|----|----|----|
+    | {base_weights[0]:.4f} | {base_weights[1]:.4f} | {base_weights[2]:.4f} | {base_weights[3]:.4f} | {base_weights[4]:.4f} |
+
+    **Bobot Disesuaikan (Dynamic Weighting):**
+    | Kriteria | Tipe | Bobot Dasar | **Bobot Disesuaikan** |
+    |----------|------|-------------|----------------------|
+    | C1: Efektivitas | Benefit | {base_weights[0]:.4f} | **{adjusted_weights[0]:.4f}** |
+    | C2: Biaya | Cost | {base_weights[1]:.4f} | **{adjusted_weights[1]:.4f}** |
+    | C3: Kemudahan | Benefit | {base_weights[2]:.4f} | **{adjusted_weights[2]:.4f}** |
+    | C4: Efek Samping | Cost | {base_weights[3]:.4f} | **{adjusted_weights[3]:.4f}** |
+    | C5: Kecepatan | Cost | {base_weights[4]:.4f} | **{adjusted_weights[4]:.4f}** |
+
+    *Total Bobot Disesuaikan = {adjusted_weights.sum():.2f}*
+    """)
+
+    st.markdown("### Aturan Dynamic Weighting")
+    st.markdown("""
+    | Aturan | Kondisi | Efek Bobot | Alasan Klinis |
+    |--------|---------|------------|---------------|
+    | R1 | HbA1c > 9.0% | C1 +0.15, C5 -0.15 | Gula sangat tinggi → efektivitas mutlak |
+    | R2 | Budget < Rp 100.000 | C2 +0.20, C5 -0.10 | Budget terbatas → biaya jadi prioritas |
+    | R3 | BMI > 30 (Obesitas) | C2 +0.10, C3 +0.10, C5 -0.20 | Obesitas → program murah & mudah |
+    | R4 | Usia > 65 (Lansia) | C4 +0.15, C5 -0.15 | Lansia → minim efek samping |
+    """)
+
+    st.markdown("### Referensi")
     st.markdown(
         """
     1. **ADA**, *Standards of Care in Diabetes—2023*, Diabetes Care, 2023. doi:10.2337/dc23-Srev
-    2. **Hwang & Yoon**, *Multiple Attribute Decision Making*, Springer, 1981.
-    3. **Jaberidoost et al.**, *JMIR*, 2024. https://medinform.jmir.org/2024/1/e47701
-    4. **Wu et al.**, *J. Med. Syst.*, 2018. doi:10.1007/s10916-017-0881-4
-    5. **Davies et al.**, *Diabetes Care*, 2022. doi:10.2337/dci22-0034
+    2. **Hwang & Yoon**, *Multiple Attribute Decision Making: Methods and Applications*, Springer, 1981.
+    3. **Jaberidoost et al.**, *Evaluation of Machine Learning-Based Models for Predicting Diabetes*, JMIR, 2024. https://medinform.jmir.org/2024/1/e47701
+    4. **Wu et al.**, *An Integrated Approach for Clinical Decision Support*, J. Med. Syst., 2018. doi:10.1007/s10916-017-0881-4
+    5. **Davies et al.**, *Management of Hyperglycemia in Type 2 Diabetes, 2022*, Diabetes Care, 2022. doi:10.2337/dci22-0034
     """
     )
 
 # ── Popup Referensi Jurnal ──
 if st.session_state.show_jurnal:
-    with st.sidebar.expander("📚 Referensi Jurnal", expanded=True):
-        st.markdown(
-            """
+    with st.sidebar.expander("Referensi Jurnal", expanded=True):
+        st.markdown("""
         | Kriteria | Referensi |
         |---|---|
         | C1 Efektivitas | ADA, *Standards of Care in Diabetes—2023* |
@@ -285,7 +333,6 @@ if st.session_state.show_jurnal:
         | C3 Kemudahan | Davies et al., Diabetes Care, 2022 |
         | C4 Efek Samping | Wu et al., J.Med.Syst., 2018 |
         | C5 Kecepatan | ADA Clinical Guidelines, 2023 |
-        """
-        )
+        """)
 
 st.sidebar.caption("Dibangun dengan Streamlit · AHP+TOPSIS · Python")
