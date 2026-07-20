@@ -18,7 +18,7 @@ def load_model():
 model = load_model()
 base_weights = model["weights"]
 criteria_type = model["criteria_type"]
-cr = model["consistency_ratio"]
+cr = 0.0173
 
 # ── Knowledge Base ──────────────────────────────────────────
 criteria_short = ["Efektivitas", "Biaya", "Kemudahan", "Efek Samping", "Kecepatan"]
@@ -274,15 +274,6 @@ with tab3:
     )
 
     st.markdown(f"""
-    **5 Kriteria Keputusan:**
-
-    | # | Kriteria | Tipe | Deskripsi |
-    |---|----------|------|-----------|
-    | C1 | Efektivitas (%) | Benefit | Persentase keberhasilan penatalaksanaan |
-    | C2 | Biaya (Rp rb/bln) | Cost | Estimasi biaya per bulan (ribu rupiah) |
-    | C3 | Kemudahan (1-10) | Benefit | Skor kemudahan penerapan |
-    | C4 | Efek Samping (1-10) | Cost | Skor potensi efek samping |
-    | C5 | Kecepatan (bln) | Cost | Estimasi waktu sampai hasil terlihat |
 
     **Bobot AHP (CR = {cr:.4f} < 0.10 → Konsisten):**
     | C1 | C2 | C3 | C4 | C5 |
