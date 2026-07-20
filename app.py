@@ -139,7 +139,7 @@ if budget == "< Rp 100.000":
     )
 
 # Aturan 3: Obesitas → Program murah & mudah
-if bmi > 30:
+if bmi >= 30:
     adjusted_weights[1] += 0.10  # C2 Biaya naik
     adjusted_weights[2] += 0.10  # C3 Kemudahan naik
     adjusted_weights[4] -= 0.20  # C5 Kecepatan turun
@@ -307,7 +307,7 @@ with tab3:
     |--------|---------|------------|---------------|
     | R1 | HbA1c > 9.0% | C1 +0.15, C5 -0.15 | Gula sangat tinggi → efektivitas mutlak |
     | R2 | Budget < Rp 100.000 | C2 +0.20, C5 -0.10 | Budget terbatas → biaya jadi prioritas |
-    | R3 | BMI > 30 (Obesitas) | C2 +0.10, C3 +0.10, C5 -0.20 | Obesitas → program murah & mudah |
+    | R3 | BMI >= 30 (Obesitas) | C2 +0.10, C3 +0.10, C5 -0.20 | Obesitas → program murah & mudah |
     | R4 | Usia > 65 (Lansia) | C4 +0.15, C5 -0.15 | Lansia → minim efek samping |
     """)
 
