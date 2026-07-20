@@ -275,21 +275,16 @@ with tab3:
 
     st.markdown(f"""
 
-    **Bobot AHP (CR = {cr:.4f} < 0.10 → Konsisten):**
-    | C1 | C2 | C3 | C4 | C5 |
-    |----|----|----|----|----|
-    | {base_weights[0]:.4f} | {base_weights[1]:.4f} | {base_weights[2]:.4f} | {base_weights[3]:.4f} | {base_weights[4]:.4f} |
+    **5 Kriteria Keputusan:**
 
-    **Bobot Disesuaikan (Dynamic Weighting):**
-    | Kriteria | Tipe | Bobot Dasar | **Bobot Disesuaikan** |
-    |----------|------|-------------|----------------------|
-    | C1: Efektivitas | Benefit | {base_weights[0]:.4f} | **{adjusted_weights[0]:.4f}** |
-    | C2: Biaya | Cost | {base_weights[1]:.4f} | **{adjusted_weights[1]:.4f}** |
-    | C3: Kemudahan | Benefit | {base_weights[2]:.4f} | **{adjusted_weights[2]:.4f}** |
-    | C4: Efek Samping | Cost | {base_weights[3]:.4f} | **{adjusted_weights[3]:.4f}** |
-    | C5: Kecepatan | Cost | {base_weights[4]:.4f} | **{adjusted_weights[4]:.4f}** |
+    | # | Kriteria | Tipe | Deskripsi |
+    |---|----------|------|-----------|
+    | C1 | Efektivitas (%) | Benefit | Persentase keberhasilan penatalaksanaan |
+    | C2 | Biaya (Rp rb/bln) | Cost | Estimasi biaya per bulan (ribu rupiah) |
+    | C3 | Kemudahan (1-10) | Benefit | Skor kemudahan penerapan |
+    | C4 | Efek Samping (1-10) | Cost | Skor potensi efek samping |
+    | C5 | Kecepatan (bln) | Cost | Estimasi waktu sampai hasil terlihat |
 
-    *Total Bobot Disesuaikan = {adjusted_weights.sum():.2f}*
     """)
 
     st.markdown("### Aturan Dynamic Weighting")
