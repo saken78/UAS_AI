@@ -127,7 +127,7 @@ if hba1c > 9.0:
     adjusted_weights[0] += 0.15  # C1 Efektivitas naik
     adjusted_weights[4] -= 0.15  # C5 Kecepatan turun
     warnings.append(
-        "⚠️ **HbA1c Tinggi (>9.0%)**: Efektivitas diprioritaskan — kecepatan bukan fokus."
+        "**HbA1c Tinggi (>9.0%)**: Efektivitas diprioritaskan — kecepatan bukan fokus."
     )
 
 # Aturan 2: Budget terbatas → Biaya jadi prioritas
@@ -135,7 +135,7 @@ if budget == "< Rp 100.000":
     adjusted_weights[1] += 0.20  # C2 Biaya naik
     adjusted_weights[4] -= 0.10  # C5 Kecepatan turun
     warnings.append(
-        "⚠️ **Budget Terbatas (< Rp 100rb)**: Opsi terjangkau diprioritaskan."
+        "**Budget Terbatas (< Rp 100rb)**: Opsi terjangkau diprioritaskan."
     )
 
 # Aturan 3: Obesitas → Program murah & mudah
@@ -144,14 +144,14 @@ if bmi > 30:
     adjusted_weights[2] += 0.10  # C3 Kemudahan naik
     adjusted_weights[4] -= 0.20  # C5 Kecepatan turun
     warnings.append(
-        "⚠️ **Obesitas (BMI > 30)**: Program terjangkau & mudah diprioritaskan."
+        "**Obesitas (BMI > 30)**: Program terjangkau & mudah diprioritaskan."
     )
 
 # Aturan 4: Lansia → Minim efek samping
 if usia > 65:
     adjusted_weights[3] += 0.15  # C4 Efek Samping naik
     adjusted_weights[4] -= 0.15  # C5 Kecepatan turun
-    warnings.append("⚠️ **Lansia (Usia > 65)**: Minim efek samping diprioritaskan.")
+    warnings.append("**Lansia (Usia > 65)**: Minim efek samping diprioritaskan.")
 
 # Pastikan tidak ada bobot negatif, lalu normalisasi
 adjusted_weights = np.clip(adjusted_weights, 0, None)
@@ -192,7 +192,7 @@ with tab1:
     df_result["Ranking"] = df_result["Skor TOPSIS"].rank(ascending=False).astype(int)
     df_result = df_result.sort_values("Ranking").reset_index(drop=True)
     df_result["Ranking"] = df_result["Ranking"].apply(
-        lambda r: ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][r - 1] + f" Rank {r}"
+        lambda r: ["", "", "", "", ""][r - 1] + f" Rank {r}"
     )
 
     with col1:
@@ -207,7 +207,7 @@ with tab1:
 
         best_idx = np.argmax(scores)
         st.success(
-            f"**Rekomendasi terbaik untuk pasien ini:**\n\n👉 {alt_names[best_idx]}"
+            f"**Rekomendasi terbaik untuk pasien ini:**\n\n {alt_names[best_idx]}"
         )
         st.balloons()
 
@@ -252,7 +252,7 @@ with tab2:
     )
     st.dataframe(df_alt, use_container_width=True)
     st.info(
-        "💡 *Data bersifat tetap dari sintesis literatur klinis (ADA 2023). "
+        "*Data bersifat tetap dari sintesis literatur klinis (ADA 2023). "
         "Yang berubah sesuai pasien adalah **bobot prioritas** kriteria.*"
     )
 
