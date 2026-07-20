@@ -105,14 +105,14 @@ budget = st.sidebar.selectbox(
 
 # Hitung BMI
 bmi = bb / ((tb / 100) ** 2)
-if bmi > 30:
+if bmi >= 30:
     status_bmi = "Obesitas"
-elif bmi > 25:
+elif bmi >= 25:
     status_bmi = "Overweight"
-else:
+elif bmi >= 18.5:
     status_bmi = "Normal"
-st.sidebar.info(f"**BMI:** {bmi:.1f} ({status_bmi})")
-st.sidebar.markdown("---")
+else:
+    status_bmi = "Underweight"
 
 # Tombol referensi
 if st.sidebar.button("Lihat Referensi Jurnal"):
