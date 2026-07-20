@@ -158,7 +158,7 @@ adjusted_weights = np.clip(adjusted_weights, 0, None)
 adjusted_weights = adjusted_weights / adjusted_weights.sum()
 
 # ── Main Content ────────────────────────────────────────────
-st.title("🩺 SPK Diabetes Melitus Tipe 2")
+st.title("SPK Diabetes Melitus Tipe 2")
 st.markdown(
     "Sistem Pendukung Keputusan — Metode **AHP + TOPSIS** dengan *Dynamic Weighting*"
 )
