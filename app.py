@@ -5,7 +5,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 
 st.set_page_config(
-    page_title="SPK Diabetes — AHP+TOPSIS", page_icon="🩺", layout="wide"
+    page_title="SPK Diabetes — AHP+TOPSIS", page_icon="", layout="wide"
 )
 
 
